@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>焰刃流光 · 格斗</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+<div id="gameWrapper">
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+    <div id="ui-overlay">
+        <div id="hud">
+            <div class="health-bar"><span style="color:#4caf50;">P1</span><div class="bar-bg"><div class="bar-fill" id="playerHealth"></div></div><span id="playerHealthText">100</span></div>
+            <div class="health-bar"><span style="color:#f44336;">AI</span><div class="bar-bg"><div class="bar-fill enemy" id="enemyHealth"></div></div><span id="enemyHealthText">100</span></div>
+            <div id="energy-bar"><span>⚡</span><div class="bar-bg"><div class="bar-fill" id="energyFill"></div></div><span id="energyText">0%</span></div>
+            <div id="arrow-count"><span class="arrow-icon">🏹</span><span id="arrowText">10/10</span></div>
+        </div>
+        <div id="menu-overlay">
+            <!-- ========== 主菜单 ========== -->
+            <div id="menu-main" class="menu-screen">
+                <div class="menu-title">
+                    <img src="assets/34-20260705005653.png" alt="焰刃流光"> <!-- 原url: https://i.ibb.co/MxCMqmfx/34-20260705005653.png -->
+                </div>
+                <div class="menu-buttons">
+                    <button class="menu-btn" data-action="pve">
+                        <img src="assets/29-20260705005340.png" alt="PVE"> <!-- 原url: https://i.ibb.co/Rp2n3Fjm/29-20260705005340.png -->
+                    </button>
+                    <button class="menu-btn" data-action="coming">
+                        <img src="assets/33-20260705005611.png" alt="功能3"> <!-- 原url: https://i.ibb.co/r2mwk3NM/33-20260705005611.png -->
+                    </button>
+                    <button class="menu-btn" data-action="pvp">
+                        <img src="assets/31-20260705005426.png" alt="PVP"> <!-- 原url: https://i.ibb.co/twwYgnd1/31-20260705005426.png -->
+                    </button>
+                </div>
+                <button id="pokedexBtn" class="pokedex-corner">📖 图鉴</button>
+            </div>
+
+            <!-- ========== PVE 难度选择 ========== -->
+            <div id="menu-difficulty" class="menu-screen" style="display:none;">
+                <div class="menu-title difficulty-title">选择难度</div>
+                <div class="difficulty-buttons">
+                    <button data-diff="easy">
+                        <img src="assets/36-20260705005735.png" alt="简单"> <!-- 原url: https://i.ibb.co/nsmMQdt2/36-20260705005735.png -->
+                    </button>
+                    <button data-diff="medium">
+                        <img src="assets/38-20260705005805.png" alt="普通"> <!-- 原url: https://i.ibb.co/BV2P3503/38-20260705005805.png -->
+                    </button>
+                    <button data-diff="hard">
+                        <img src="assets/39-20260705005825.png" alt="困难"> <!-- 原url: https://i.ibb.co/Dg6mkHky/39-20260705005825.png -->
+                    </button>
+                </div>
+                <button class="back-btn" id="difficultyBackBtn">← 返回</button>
+            </div>
+
+            <!-- ========== PvP 大厅 ========== -->
+            <div id="menu-pvp" class="menu-screen" style="display:none;">
+                <div class="menu-title pvp-title">⚔️ 局域网对战</div>
+                <div class="pvp-buttons">
+                    <button class="pvp-btn highlight" id="pvpCreateBtn">🏠 创建房间</button>
+                    <button class="pvp-btn" id="pvpJoinBtn">🔗 加入房间</button>
+                </div>
+                <div class="pvp-code-area" id="pvpCreateArea" style="display:none;">
+                    <label>🔑 房间代码（告诉对方这5位数字）：</label>
+                    <div class="room-code-display" id="pvpRoomCodeDisplay">-----</div>
+                    <button class="pvp-btn copy-btn" id="pvpCopyCodeBtn">📋 复制房间代码</button>
+                </div>
+                <div class="pvp-code-area" id="pvpJoinArea" style="display:none;">
+                    <label>🔢 输入房主的5位房间代码：</label>
+                    <input type="text" id="pvpRoomCodeInput" class="room-code-input" placeholder="例如 12345" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                    <button class="pvp-btn highlight" id="pvpJoinConfirmBtn">🔗 加入房间</button>
+                </div>
+                <div class="pvp-status" id="pvpStatus"></div>
+                <button class="back-btn" id="pvpBackBtn">← 返回</button>
+            </div>
+        </div>
+
+        <div id="char-select">
+            <div class="char-title">选择你的角色</div>
+            <div class="char-grid" id="charGrid"></div>
+            <button class="char-btn" id="charStartBtn">⚔️ 开始战斗</button>
+        </div>
+
+        <div id="pokedex-overlay">
+            <div class="pokedex-content">
+                <div class="pokedex-header">
+                    <h2 id="pokedexTitle">📖 角色图鉴</h2>
+                    <button class="pokedex-close" id="pokedexCloseBtn">✕</button>
+                </div>
+                <div class="pokedex-body" id="pokedexBody">
+                    <div class="dex-list" id="dexList">
+                    </div>
+                    <div class="dex-detail" id="dexDetail">
+                        <button class="dex-back" id="dexBackBtn">← 返回列表</button>
+                        <div id="dexDetailContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="result-message">
+            <div id="resultText">胜利!</div>
+            <div class="sub" id="resultSub">战斗结束</div>
+            <div class="btn-row">
+                <button id="restartBtn">🔄 再来一局</button>
+                <button id="menuBtn">🏠 主菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="touch-controls">
+        <div class="ctrl-group">
+            <div class="btn-wrapper"><div class="ctrl-btn dpad" id="btnLeft">◀</div></div>
+            <div class="btn-wrapper"><div class="ctrl-btn dpad" id="btnRight">▶</div></div>
+        </div>
+        <div class="ctrl-group right-controls">
+            <div class="btn-wrapper"><div class="ctrl-btn jump" id="btnJump">▲<span class="sub-label">跳跃</span></div></div>
+            <div class="skill-row">
+                <div class="btn-wrapper"><div class="ctrl-btn skill" id="btnAttack">⚔️<span class="sub-label">攻击</span><div class="cd-overlay hidden"></div></div></div>
+                <div class="btn-wrapper"><div class="ctrl-btn skill" id="btnSkill1">🗡️<span class="sub-label">技能1</span><div class="cd-overlay hidden"></div></div></div>
+                <div class="btn-wrapper"><div class="ctrl-btn skill" id="btnSkill2">🛡️<span class="sub-label">技能2</span><div class="cd-overlay hidden"></div></div></div>
+                <div class="btn-wrapper"><div class="ctrl-btn ult" id="btnUlt">🌀<span class="sub-label">大招</span><div class="cd-overlay hidden"></div></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/01_core.js"></script>
+<script src="js/02_network.js"></script>
+<script src="js/03_systems.js"></script>
+<script src="js/04_skills.js"></script>
+<script src="js/characters/knight.js"></script>
+<script src="js/characters/mage.js"></script>
+<script src="js/characters/archer.js"></script>
+<script src="js/characters/paladin.js"></script>
+<script src="js/characters/witch.js"></script>
+<script src="js/characters/assassin.js"></script>
+<script src="js/characters/shadowworrior.js"></script>
+<script src="js/05_fighter.js"></script>
+<script src="js/06_combat_ai.js"></script>
+<script src="js/07_game_render.js"></script>
+<script src="js/systems/input.js"></script>
+<script src="js/systems/dash.js"></script>
+<script src="js/systems/tornadoes.js"></script>
+<script src="js/systems/projectiles.js"></script>
+<script src="js/systems/flameZones.js"></script>
+<script src="js/systems/slow.js"></script>
+<script src="js/systems/pickups.js"></script>
+<script src="js/08_update.js"></script>
+<script src="js/09_render_loop.js"></script>
+<script src="js/10_menu_boot.js"></script>
+</body>
+</html>
